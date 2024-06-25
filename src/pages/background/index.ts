@@ -1,11 +1,30 @@
-import reloadOnUpdate from "virtual:reload-on-update-in-background-script";
+chrome.runtime.onInstalled.addListener(() => {
+  console.log("Extension installed");
+});
 
-reloadOnUpdate("pages/background");
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "fetchOGImage") {
+    chrome.scripting.executeScript(
+      {
+        target: { tabId: message.tabId },
+        func: fetchOGImageFromPage,
+      },
+      (results) => {
+        if (results && results[0].result) {
+          console.log(results);
+          sendResponse({ imageURL: results[0].result });
+        } else {
+          console.log(results, "INSDIE NIULL");
 
-/**
- * Extension reloading is necessary because the browser automatically caches the css.
- * If you do not use the css of the content script, please delete it.
- */
-reloadOnUpdate("pages/content/style.scss");
+          sendResponse({ imageURL: "" });
+        }
+      }
+    );
+    return true; // Keep the message channel open for sendResponse
+  }
+});
 
-console.log("background loaded");
+function fetchOGImageFromPage() {
+  const ogImageTag = document.querySelector('meta[property="og:image"]');
+  return ogImageTag ? ogImageTag.getAttribute("content") : null;
+}
